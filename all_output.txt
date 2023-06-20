@@ -1,0 +1,103 @@
+## Core Classes and Functions
+
+### `User` class
+- `__init__(self, username: str, score: int, total_score: int)` - Initializes a new instance of the `User` class with the given `username`, `score`, and `total_score`.
+- `get_percentage(self) -> float` - Calculates and returns the percentage of the user's score out of their total score.
+- `__str__(self) -> str` - Returns a string representation of the `User` instance.
+
+### `Database` class
+- `__init__(self, host: str, username: str, password: str, database: str)` - Initializes a new instance of the `Database` class with the given connection details.
+- `add_user(self, user: User) -> None` - Adds a new user to the database.
+- `get_user(self, username: str) -> Union[User, None]` - Retrieves a user from the database with the given `username`. Returns `None` if the user is not found.
+
+### `main` function
+- `get_user_input() -> Tuple[str, int, int]` - Prompts the user to enter their username, score, and total score, and returns the values as a tuple.
+- `print_user(user: User) -> None` - Prints the given `User` instance to the console.
+- `main() -> None` - The main function that runs the application.
+
+## File: `user.py`
+```python
+from dataclasses import dataclass
+
+
+@dataclass
+class User:
+    username: str
+    score: int
+    total_score: int
+
+    def get_percentage(self) -> float:
+        return (self.score / self.total_score) * 100
+
+    def __str__(self) -> str:
+        return f"{self.username}: {self.score}/{self.total_score} ({self.get_percentage()}%)"
+```
+
+## File: `database.py`
+```python
+import mysql.connector
+from typing import Union
+from .user import User
+
+
+class Database:
+    def __init__(self, host: str, username: str, password: str, database: str):
+        self.connection = mysql.connector.connect(
+            host=host,
+            user=username,
+            password=password,
+            database=database
+        )
+        self.cursor = self.connection.cursor()
+
+    def add_user(self, user: User) -> None:
+        query = "INSERT INTO users (username, score, total_score) VALUES (%s, %s, %s)"
+        values = (user.username, user.score, user.total_score)
+        self.cursor.execute(query, values)
+        self.connection.commit()
+
+    def get_user(self, username: str) -> Union[User, None]:
+        query = "SELECT * FROM users WHERE username = %s"
+        values = (username,)
+        self.cursor.execute(query, values)
+        result = self.cursor.fetchone()
+        if result:
+            return User(*result)
+        else:
+            return None
+```
+
+## File: `main.py`
+```python
+from .user import User
+from .database import Database
+from typing import Tuple
+
+
+def get_user_input() -> Tuple[str, int, int]:
+    username = input("Enter your username: ")
+    score = int(input("Enter your score: "))
+    total_score = int(input("Enter the total score: "))
+    return username, score, total_score
+
+
+def print_user(user: User) -> None:
+    print(user)
+
+
+def main() -> None:
+    db = Database("localhost", "root", "password", "test_scores")
+    username, score, total_score = get_user_input()
+    user = User(username, score, total_score)
+    db.add_user(user)
+    retrieved_user = db.get_user(username)
+    if retrieved_user:
+        print_user(retrieved_user)
+    else:
+        print("User not found.")
+```
+
+## File: `requirements.txt`
+```
+mysql-connector-python
+```
